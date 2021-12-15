@@ -1,0 +1,31 @@
+{
+  "name": "esbuild-plugin-go",
+  "version": "1.0.0",
+  "description": "An esbuild plugin to load Go code/callbacks 🙂",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "cd ./test && node ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/qiweiii/esbuild-plugin-go.git"
+  },
+  "keywords": [
+    "esbuild",
+    "esbuild-plugin",
+    "go",
+    "golang"
+  ],
+  "author": "qiwei",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/qiweiii/esbuild-plugin-go/issues"
+  },
+  "homepage": "https://github.com/qiweiii/esbuild-plugin-go#readme",
+  "dependencies": {
+    "esbuild": "^0.14.3"
+  }
+}
