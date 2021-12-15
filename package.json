@@ -2,30 +2,49 @@
   "name": "esbuild-plugin-go",
   "version": "1.0.0",
   "description": "An esbuild plugin to load Go code/callbacks 🙂",
-  "main": "index.js",
-  "directories": {
-    "test": "test"
-  },
-  "scripts": {
-    "test": "cd ./test && node ."
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/qiweiii/esbuild-plugin-go.git"
-  },
   "keywords": [
     "esbuild",
     "esbuild-plugin",
     "go",
     "golang"
   ],
-  "author": "qiwei",
-  "license": "MIT",
+  "homepage": "https://github.com/qiweiii/esbuild-plugin-go#readme",
   "bugs": {
     "url": "https://github.com/qiweiii/esbuild-plugin-go/issues"
   },
-  "homepage": "https://github.com/qiweiii/esbuild-plugin-go#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/qiweiii/esbuild-plugin-go.git"
+  },
+  "license": "MIT",
+  "author": "qiwei",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "files": [
+    "lib/**/*"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "format": "prettier --write \"src/**/*.ts\" \"src/**/*.js\"",
+    "lint": "tslint -p tsconfig.json",
+    "prepare": "husky install",
+    "test": "cd ./test && node ."
+  },
   "dependencies": {
     "esbuild": "^0.14.3"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^15.0.0",
+    "@commitlint/config-conventional": "^15.0.0",
+    "husky": "^7.0.0",
+    "prettier": "^2.5.1",
+    "tslint": "^6.1.3",
+    "tslint-config-prettier": "^1.18.0",
+    "typescript": "^4.5.4"
+  },
+  "engines": {
+    "node": ">=0.10.3 <15"
   }
 }
