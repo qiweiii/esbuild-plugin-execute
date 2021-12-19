@@ -7,6 +7,7 @@ Why? According to esbuild [doc](https://esbuild.github.io/plugins/#plugin-api-li
 ## Prerequisite
 
 1. Go is installed on the machine
+2. Make sure imported go packages in yout go code have been installed.
 
 ## Usage
 
@@ -26,7 +27,7 @@ esbuild.build({
 })
 ```
 
-`PluginCallback.OnResolve` means the `main` function in `env.go` will take fields in [`OnResolveArgs`](https://esbuild.github.io/plugins/#resolve-arguments) as aruguments .
+`PluginCallback.OnResolve` means the function in `images.go` will take fields in [`OnResolveArgs`](https://esbuild.github.io/plugins/#resolve-arguments) as aruguments.
 
 Example go code:
 
@@ -37,7 +38,7 @@ package main
 import "path/filepath"
 import "github.com/evanw/esbuild/pkg/api"
 
-func main(args api.OnResolveArgs) (api.OnResolveResult, error) {
+func images(args api.OnResolveArgs) (api.OnResolveResult, error) {
   return api.OnResolveResult{
     Path: filepath.Join(args.ResolveDir, "public", args.Path),
   }, nil
@@ -49,7 +50,7 @@ package main
 import "path/filepath"
 import "github.com/evanw/esbuild/pkg/api"
 
-func(args api.OnResolveArgs) (api.OnResolveResult, error) {
+func https(args api.OnResolveArgs) (api.OnResolveResult, error) {
   return api.OnResolveResult{
     Path:     args.Path,
     External: true,
@@ -57,7 +58,12 @@ func(args api.OnResolveArgs) (api.OnResolveResult, error) {
 }
 ```
 
-## goPlugin: arguments
+For a more detailed example, look at code in [test](./test) folder.
+
+---
+
+## Docs
+### 1. goPlugin: arguments
 
 `goPlugin(path: string, callbackType: PluginCallback, filter: RegExp, namepace?: string)`
 
@@ -69,12 +75,12 @@ func(args api.OnResolveArgs) (api.OnResolveResult, error) {
 
 `namespace` refer to esbuild [doc](https://esbuild.github.io/plugins/#namespaces)
 
-## Go code: arguments and returns
+### 2. Go code: arguments and returns
 
 You only need to provide a `.go` file with a `main` function, the arguments passed to it depends on the type of `PluginCallback` which could be `OnStart`, `OnEnd`, `OnResolve` or `OnLoad`.
 
 ```go
-// depends on `PluginCallback` passed in `goPlugin`, use one of the function type:
+// depends on type of `PluginCallback` passed in `goPlugin`, use one of the function type:
 // OnResolve:
 func (args ...OnResolveArgs) OnResolveResult
 // OnLoad:
@@ -130,3 +136,16 @@ I should use typescript! Since esbuild API options and results have good types!
 ### 5. Plugin's module support
 
 Need to be able to be imported using both `require` or `import`
+
+
+---
+
+
+
+
+
+## Limitations
+
+1. Could not put all plugin code in on file due to design
+2. Require Go to be downloaded, and go module created
+3. Difficult to use in CI...

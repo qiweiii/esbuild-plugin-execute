@@ -106,3 +106,4 @@ dist
 # qiwei added
 .npmrc
 /lib
+/bin

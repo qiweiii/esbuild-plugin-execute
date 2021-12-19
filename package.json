@@ -1,12 +1,15 @@
 {
   "name": "esbuild-plugin-go",
   "version": "1.0.0",
-  "description": "An esbuild plugin to load Go code/callbacks 🙂",
+  "description": "An esbuild plugin to build esbuild plugins that can execute binary",
   "keywords": [
     "esbuild",
     "esbuild-plugin",
     "go",
-    "golang"
+    "golang",
+    "node",
+    "binary",
+    "execute"
   ],
   "homepage": "https://github.com/qiweiii/esbuild-plugin-go#readme",
   "bugs": {
@@ -38,6 +41,7 @@
   "devDependencies": {
     "@commitlint/cli": "^15.0.0",
     "@commitlint/config-conventional": "^15.0.0",
+    "@types/node": "^16.11.13",
     "husky": "^7.0.0",
     "prettier": "^2.5.1",
     "tslint": "^6.1.3",
