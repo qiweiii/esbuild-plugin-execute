@@ -1,35 +1,25 @@
-import {
-  OnLoadArgs,
-  OnLoadOptions,
-  OnResolveArgs,
-  OnResolveOptions,
-  PluginBuild,
-  Plugin,
-  OnStartResult,
-  OnLoadResult,
-  OnResolveResult,
-} from 'esbuild';
+import { OnLoadArgs, OnLoadOptions, OnResolveArgs, OnResolveOptions, PluginBuild, Plugin } from 'esbuild';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import chalk from 'chalk';
 
 const execFileAsync = promisify(execFile);
 
-enum CallbackType {
+export enum CallbackType {
   OnResolve,
   OnLoad,
   OnStart,
   OnEnd,
 }
 
-interface Callback {
+export interface Callback {
   path: string;
   type: CallbackType;
   filter?: RegExp;
   namespace?: string;
 }
 
-const createPlugin = (name: string, callbacks: Callback[]): Plugin => {
+export const createPlugin = (name: string, callbacks: Callback[]): Plugin => {
   return {
     name: name,
     setup(build: PluginBuild) {
@@ -43,16 +33,21 @@ const createPlugin = (name: string, callbacks: Callback[]): Plugin => {
             filter: callback.filter,
             namespace: callback.namespace ? callback.namespace : 'file',
           };
-          build.onResolve(options, async (args: OnResolveArgs): Promise<OnResolveResult | undefined> => {
-            let { stdout } = await execFileAsync(callback.path, [
-              args.path,
-              args.importer,
-              args.namespace,
-              args.resolveDir,
-              args.kind,
-              args.pluginData,
-            ]);
-            return JSON.parse(stdout);
+          build.onResolve(options, async (args: OnResolveArgs) => {
+            try {
+              let { stdout } = await execFileAsync(callback.path, [
+                args.path,
+                args.importer,
+                args.namespace,
+                args.resolveDir,
+                args.kind,
+                args.pluginData,
+              ]);
+              let res = JSON.parse(stdout);
+              return res;
+            } catch (e) {
+              console.log(e);
+            }
           });
         } else if (callback.type === CallbackType.OnLoad) {
           if (!callback.filter) {
@@ -63,28 +58,39 @@ const createPlugin = (name: string, callbacks: Callback[]): Plugin => {
             filter: callback.filter,
             namespace: callback.namespace ? callback.namespace : 'file',
           };
-          build.onLoad(options, async (args: OnLoadArgs): Promise<OnLoadResult | undefined> => {
-            let { stdout } = await execFileAsync(callback.path, [
-              args.path,
-              args.namespace,
-              args.suffix,
-              args.pluginData,
-            ]);
-            return JSON.parse(stdout);
+          build.onLoad(options, async (args: OnLoadArgs) => {
+            try {
+              let { stdout } = await execFileAsync(callback.path, [
+                args.path,
+                args.namespace,
+                args.suffix,
+                args.pluginData,
+              ]);
+              let res = JSON.parse(stdout);
+              return res;
+            } catch (e) {
+              console.log(e);
+            }
           });
         } else if (callback.type === CallbackType.OnStart) {
-          build.onStart(async (): Promise<void | OnStartResult | null> => {
-            let { stdout } = await execFileAsync(callback.path);
-            return JSON.parse(stdout);
+          build.onStart(async () => {
+            try {
+              let { stdout } = await execFileAsync(callback.path);
+              return JSON.parse(stdout);
+            } catch (e) {
+              console.log(e);
+            }
           });
         } else if (callback.type === CallbackType.OnEnd) {
           build.onStart(async () => {
-            await execFileAsync(callback.path);
+            try {
+              await execFileAsync(callback.path);
+            } catch (e) {
+              console.log(e);
+            }
           });
         }
       }
     },
   };
 };
-
-export default createPlugin;

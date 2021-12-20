@@ -105,5 +105,7 @@ dist
 
 # qiwei added
 .npmrc
-/lib
-/bin
+lib
+bin
+build
+out
