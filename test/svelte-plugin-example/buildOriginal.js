@@ -41,7 +41,7 @@ let sveltePlugin = {
 
 require('esbuild')
   .build({
-    entryPoints: ['app.svelte'],
+    entryPoints: ['app.js'],
     bundle: true,
     outfile: 'out/outOriginal.js',
     plugins: [sveltePlugin],
