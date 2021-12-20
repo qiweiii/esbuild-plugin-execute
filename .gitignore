@@ -109,3 +109,5 @@ lib
 bin
 build
 out
+go.mod
+go.sum
