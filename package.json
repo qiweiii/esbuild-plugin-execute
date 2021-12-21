@@ -38,7 +38,7 @@
     "lint": "tslint -p tsconfig.json",
     "prepare": "husky install",
     "types": "tsc --noEmit",
-    "publish": "np --no-2fa --no-tests"
+    "release": "np --no-2fa --no-tests"
   },
   "dependencies": {},
   "devDependencies": {
