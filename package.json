@@ -1,5 +1,5 @@
 {
-  "name": "esbuild-plugin-go",
+  "name": "esbuild-plugin-execute",
   "version": "0.2.1",
   "description": "A tool to create esbuild plugins with a bunch of binaries 🙂",
   "keywords": [
@@ -10,13 +10,13 @@
     "binary",
     "execute"
   ],
-  "homepage": "https://github.com/qiweiii/esbuild-plugin-go#readme",
+  "homepage": "https://github.com/qiweiii/esbuild-plugin-execute#readme",
   "bugs": {
-    "url": "https://github.com/qiweiii/esbuild-plugin-go/issues"
+    "url": "https://github.com/qiweiii/esbuild-plugin-execute/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/qiweiii/esbuild-plugin-go.git"
+    "url": "git+https://github.com/qiweiii/esbuild-plugin-execute.git"
   },
   "license": "MIT",
   "author": "qiwei",
