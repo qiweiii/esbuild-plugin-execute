@@ -44,28 +44,28 @@ For example, the `./resolveHttp/main` executabe above could be like this if writ
 package main
 
 import (
-	"encoding/json"
-	"fmt"
-	"os"
+  "encoding/json"
+  "fmt"
+  "os"
 )
 
 type Result struct {
-	Path      string `json:"path"`
-	External  bool `json:"external"`
+  Path      string `json:"path"`
+  External  bool `json:"external"`
 }
 
 func main() {
-	path := os.Args[1]
-	data, _ := json.Marshal(resolveHttp(path))
-	fmt.Println(string(data)) // print the json string to stdout
+  path := os.Args[1]
+  data, _ := json.Marshal(resolveHttp(path))
+  fmt.Println(string(data)) // print the json string to stdout
 }
 
 func resolveHttp(path string) *Result {
-	res := &Result{
-		Path:      path,
-		External:  true,
-	}
-	return res
+  res := &Result{
+    Path:      path,
+    External:  true,
+  }
+  return res
 }
 ```
 
