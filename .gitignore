@@ -111,3 +111,4 @@ build
 out
 go.mod
 go.sum
+.DS_Store
