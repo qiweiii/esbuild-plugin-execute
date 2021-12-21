@@ -1,6 +1,6 @@
 {
   "name": "esbuild-plugin-go",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "A tool to create esbuild plugins with a bunch of binaries 🙂",
   "keywords": [
     "esbuild",
