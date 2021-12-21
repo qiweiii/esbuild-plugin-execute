@@ -12,7 +12,6 @@ import {
 } from 'esbuild';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
-import chalk from 'chalk';
 
 const execFileAsync = promisify(execFile);
 
@@ -37,7 +36,7 @@ export const createPlugin = (name: string, callbacks: Callback[]): Plugin => {
       for (const callback of callbacks) {
         if (callback.type === CallbackType.OnResolve) {
           if (!callback.filter) {
-            console.error(chalk.red('ERROR'), `A filter is required for ${callback.type} callback in ${name} plugin`);
+            console.error('ERROR: ', `A filter is required for ${callback.type} callback in ${name} plugin`);
             return;
           }
           let options: OnResolveOptions = {
@@ -62,7 +61,7 @@ export const createPlugin = (name: string, callbacks: Callback[]): Plugin => {
           });
         } else if (callback.type === CallbackType.OnLoad) {
           if (!callback.filter) {
-            console.error(chalk.red('ERROR'), `A filter is required for ${callback.type} callback in ${name} plugin`);
+            console.error('ERROR: ', `A filter is required for ${callback.type} callback in ${name} plugin`);
             return;
           }
           let options: OnLoadOptions = {

@@ -25,7 +25,7 @@ const createBuild = () => {
       loader: {
         '.ts': 'ts',
       },
-      external: ['child_process', 'util', 'chalk'],
+      external: ['child_process', 'util'],
       outfile: path.resolve(__dirname, '..', 'build', outputFilename),
       format,
     })

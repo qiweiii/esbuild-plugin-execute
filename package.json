@@ -40,9 +40,7 @@
     "types": "tsc --noEmit",
     "publish": "np --no-2fa"
   },
-  "dependencies": {
-    "chalk": "^5.0.0"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@commitlint/cli": "^15.0.0",
     "@commitlint/config-conventional": "^15.0.0",
@@ -58,8 +56,5 @@
   },
   "peerDependencies": {
     "esbuild": "^0.14.0"
-  },
-  "engines": {
-    "node": ">=0.10.3 <15"
   }
 }
