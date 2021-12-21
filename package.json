@@ -1,6 +1,6 @@
 {
   "name": "esbuild-plugin-execute",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "A tool to create esbuild plugins with a bunch of binaries 🙂",
   "keywords": [
     "esbuild",
