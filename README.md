@@ -2,42 +2,159 @@
 
 A tool to create esbuild plugins with a bunch of binaries 🙂.
 
-Why? Inspired from esbuild [doc](https://esbuild.github.io/plugins/#plugin-api-limitations) and this [issue 515](https://github.com/evanw/esbuild/issues/515). To help using executables in esbuild plugins and also writting (parts of) esbuild plugins in other languages.
+Why? Inspired from esbuild [doc](https://esbuild.github.io/plugins/#plugin-api-limitations) and this [issue 515](https://github.com/evanw/esbuild/issues/515). To help using executables in esbuild plugins and also enable writting (parts of) esbuild plugins in other languages (which could be faster).
 
 ## Prerequisite
 
 1. Knowledge of how to write esbuild plugin (note: this is a tool to create esbuild plugins)
-2. Executables used in the plugin you want to create is installed on the machine
+2. Executables used in the plugin are installed on the machine
 
 ## Usage
 
-This example uses the code from ...
+This example recreates the plugin from https://esbuild.github.io/plugins/#resolve-callbacks
 
-For a more detailed example, look at code in [test](./test) folder.
+```javascript
+import esbuild from 'esbuild';
+import { createPlugin, CallbackType } from 'esbuild-plugin-execute';
+
+let exampleOnResolvePlugin = createPlugin('example' [
+  {
+    path: './resolveImage/main', // executable path
+    type: CallbackType.OnResolve,
+    filter: /^images\//,
+  },
+  {
+    path: './resolveHttp/main', // executable path
+    type: CallbackType.OnResolve,
+    filter: /^https?:\/\//,
+  },
+])
+
+esbuild.build({
+  entryPoints: ['app.js'],
+  bundle: true,
+  plugins: [exampleOnResolvePlugin],
+  loader: { '.png': 'binary' },
+}).catch(() => process.exit(1))
+```
+
+For example, the `./resolveHttp/main` executabe above could be like this if written in Go:
+
+```Go
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+)
+
+type Result struct {
+	Path      string `json:"path"`
+	External  bool `json:"external"`
+}
+
+func main() {
+	path := os.Args[1]
+	data, _ := json.Marshal(resolveHttp(path))
+	fmt.Println(string(data)) // print the json string to stdout
+}
+
+func resolveHttp(path string) *Result {
+	res := &Result{
+		Path:      path,
+		External:  true,
+	}
+	return res
+}
+```
+
+For more detailed examples, look at code in [test](./test) folder.
 
 ---
 
-## Docs
+## Docs: createPlugin
+
+`createPlugin: (name: string, callbacks: Callback[]): Plugin`
+
+`createPlugin` takes in a plugin name and an array of callbacks:
+
+```typescript
+interface Callback {
+  path: string; // path to the executable
+  type: CallbackType; // one of CallbackType
+  filter?: RegExp;  // https://esbuild.github.io/plugins/#filters
+  namespace?: string; // https://esbuild.github.io/plugins/#namespaces
+}
+
+enum CallbackType {
+  OnResolve,
+  OnLoad,
+  OnStart,
+  OnEnd,
+}
+```
+
+## Docs: executables
 
 ### 1. Arguments
 
+Arguments are passed to your binary executable through command line.
+
 For `CallbackType.OnResolve`, the following args are passed to your executable:
 
-1. `path` This is the fully-resolved path to the module.
+```typescript
+// https://esbuild.github.io/plugins/#resolve-arguments
+interface OnResolveArgs {
+  path: string;
+  importer: string;
+  namespace: string;
+  resolveDir: string;
+  kind: ResolveKind;
+  pluginData: any;
+}
 
-2. `type` is the type of callback that executable.... could be one of `OnStart`, `OnEnd`, `OnResolve` or `OnLoad`
+type ResolveKind =
+  | 'entry-point'
+  | 'import-statement'
+  | 'require-call'
+  | 'dynamic-import'
+  | 'require-resolve'
+  | 'import-rule'
+  | 'url-token'
+```
 
-3. `filter` refer to esbuild [doc](https://esbuild.github.io/plugins/#filters)
+For `CallbackType.OnLoad`:
 
-4. `namespace` refer to esbuild [doc](https://esbuild.github.io/plugins/#namespaces)
+```typescript
+// https://esbuild.github.io/plugins/#load-arguments
+interface OnLoadArgs {
+  path: string;
+  namespace: string;
+  suffix: string;
+  pluginData: any;
+}
+```
+
+For `CallbackType.OnStart`, no argument is passed to the executable.
+
+For `CallbackType.OnEnd`, no argument is passed to the executable, because `BuildResult` is not easy to be passed to executable as arguments. In future, I may add a few items in `BuildResult`.
+
 
 ### 2. Returns
 
-JSON objects contaning:
+Executables should print JSON string to stdout.
 
-- 
+For `CallbackType.OnResolve`:
+- https://esbuild.github.io/plugins/#resolve-results
 
+For `CallbackType.OnLoad`:
+- https://esbuild.github.io/plugins/#load-results
 
+For `CallbackType.OnStart`:
+- https://pkg.go.dev/github.com/evanw/esbuild/pkg/api#OnStartResult
+
+For `CallbackType.OnEnd`, no return value.
 
 
 **IMPT: `OnResolveArgs.pluginData`, `OnResolveResult.pluginData`, `OnLoadArgs.pluginData`, `OnLoadResult.pluginData` are can only be text/string data**
@@ -92,3 +209,4 @@ Need to be able to be imported using both `require` or `import`
 
 1. Not so easy to use overall...
 2. Require user to parse args and make executables
+3. Cannot write initialization code in `setup` function

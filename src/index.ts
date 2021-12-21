@@ -1,4 +1,15 @@
-import { OnLoadArgs, OnLoadOptions, OnResolveArgs, OnResolveOptions, PluginBuild, Plugin } from 'esbuild';
+import {
+  OnLoadArgs,
+  OnLoadOptions,
+  OnResolveArgs,
+  OnResolveOptions,
+  PluginBuild,
+  Plugin,
+  BuildResult,
+  OnStartResult,
+  OnLoadResult,
+  OnResolveResult,
+} from 'esbuild';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import chalk from 'chalk';
@@ -33,7 +44,7 @@ export const createPlugin = (name: string, callbacks: Callback[]): Plugin => {
             filter: callback.filter,
             namespace: callback.namespace ? callback.namespace : 'file',
           };
-          build.onResolve(options, async (args: OnResolveArgs) => {
+          build.onResolve(options, async (args: OnResolveArgs): Promise<OnResolveResult | null | undefined> => {
             try {
               let { stdout } = await execFileAsync(callback.path, [
                 args.path,
@@ -58,7 +69,7 @@ export const createPlugin = (name: string, callbacks: Callback[]): Plugin => {
             filter: callback.filter,
             namespace: callback.namespace ? callback.namespace : 'file',
           };
-          build.onLoad(options, async (args: OnLoadArgs) => {
+          build.onLoad(options, async (args: OnLoadArgs): Promise<OnLoadResult | null | undefined> => {
             try {
               let { stdout } = await execFileAsync(callback.path, [
                 args.path,
@@ -73,7 +84,7 @@ export const createPlugin = (name: string, callbacks: Callback[]): Plugin => {
             }
           });
         } else if (callback.type === CallbackType.OnStart) {
-          build.onStart(async () => {
+          build.onStart(async (): Promise<OnStartResult | undefined> => {
             try {
               let { stdout } = await execFileAsync(callback.path);
               return JSON.parse(stdout);
@@ -82,7 +93,7 @@ export const createPlugin = (name: string, callbacks: Callback[]): Plugin => {
             }
           });
         } else if (callback.type === CallbackType.OnEnd) {
-          build.onStart(async () => {
+          build.onEnd(async () => {
             try {
               await execFileAsync(callback.path);
             } catch (e) {
