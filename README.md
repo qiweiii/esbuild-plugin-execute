@@ -1,4 +1,4 @@
-# esbuild-plugin-go
+# esbuild-plugin-execute
 
 A tool to create esbuild plugins with a bunch of binaries 🙂.
 
