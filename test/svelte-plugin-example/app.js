@@ -1,3 +1,3 @@
-import Input from './Input.svelte';
+import Input from './input.svelte';
 
 console.log(Input);

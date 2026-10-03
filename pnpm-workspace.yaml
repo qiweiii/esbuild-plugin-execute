@@ -1,0 +1,10 @@
+packages:
+  - '.'
+
+# Do not execute dependency or project lifecycle scripts during installation.
+ignoreScripts: true
+engineStrict: true
+strictPeerDependencies: true
+saveExact: true
+minimumReleaseAge: 2880
+blockExoticSubdeps: true

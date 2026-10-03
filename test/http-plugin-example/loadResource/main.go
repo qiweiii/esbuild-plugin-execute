@@ -3,54 +3,55 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"net"
+	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"time"
 )
 
 type Result struct {
-	Contents string `json:"contents"`
+	Contents   string `json:"contents"`
+	Loader     string `json:"loader"`
+	PluginData string `json:"pluginData"`
 }
 
 func main() {
-	path := os.Args[1]
-	data, _ := json.Marshal(loadResource(path))
-	fmt.Println(string(data))
+	if len(os.Args) != 5 {
+		fmt.Fprintln(os.Stderr, "expected four onLoad arguments")
+		os.Exit(1)
+	}
+	result, err := loadResource(os.Args[1])
+	if err == nil {
+		err = json.NewEncoder(os.Stdout).Encode(result)
+	}
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 }
 
-func loadResource(path string) *Result {
-	// to avoid TSL handshake timeout error
-	// https://stackoverflow.com/a/41956295
-	t := &http.Transport{
-		Dial: (&net.Dialer{
-			Timeout:   60 * time.Second,
-			KeepAlive: 30 * time.Second,
-		}).Dial,
-		TLSHandshakeTimeout: 60 * time.Second,
+func loadResource(path string) (*Result, error) {
+	parsed, err := url.Parse(path)
+	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
+		return nil, fmt.Errorf("expected an absolute HTTP or HTTPS URL: %s", path)
 	}
-	c := &http.Client{
-		Transport: t,
-	}
-
-	// to avoid EOF error: https://stackoverflow.com/a/19006050
-	req, _ := http.NewRequest("GET", path, nil)
-	req.Close = true
-
-	// download resource
-	res, err := c.Do(req)
+	client := &http.Client{Timeout: 15 * time.Second}
+	response, err := client.Get(path)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	defer res.Body.Close()
-	bytes, err := ioutil.ReadAll(res.Body)
+	defer response.Body.Close()
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		return nil, fmt.Errorf("GET %s failed: %s", path, response.Status)
+	}
+	const maxResponseBytes = 1024 * 1024
+	contents, err := io.ReadAll(io.LimitReader(response.Body, maxResponseBytes+1))
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-
-	contents := string(bytes)
-	return &Result{
-		Contents: contents,
+	if len(contents) > maxResponseBytes {
+		return nil, fmt.Errorf("GET %s exceeded the 1 MiB response limit", path)
 	}
+	return &Result{Contents: string(contents), Loader: "js", PluginData: response.Request.URL.String()}, nil
 }

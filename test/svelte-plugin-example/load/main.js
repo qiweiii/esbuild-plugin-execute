@@ -4,11 +4,7 @@ let fs = require('fs');
 
 (async function () {
   // get OnLoadArgs
-  var args = process.argv.slice();
-  var argsPath = args[1];
-  var namespace = args[2];
-  var suffix = args[3];
-  var pluginData = args[4]; // only support string data
+  const [argsPath] = process.argv.slice(2);
 
   // This converts a message in Svelte's format to esbuild's format
   let convertMessage = ({ message, start, end }) => {
@@ -35,7 +31,9 @@ let fs = require('fs');
   try {
     let { js, warnings } = svelte.compile(source, { filename });
     let contents = js.code + `//# sourceMappingURL=` + js.map.toUrl();
-    console.log(JSON.stringify({ contents, warnings: warnings.map(convertMessage) }));
+    console.log(
+      JSON.stringify({ contents, warnings: warnings.map(convertMessage), resolveDir: path.dirname(argsPath) }),
+    );
   } catch (e) {
     console.log(JSON.stringify({ errors: [convertMessage(e)] }));
   }

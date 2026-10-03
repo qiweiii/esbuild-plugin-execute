@@ -1,4 +1,2 @@
 #!/bin/sh
-. "$(dirname "$0")/_/husky.sh"
-
-# npm test
+# Checks are intentionally opt-in during the setup migration.

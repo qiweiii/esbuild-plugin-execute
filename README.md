@@ -1,90 +1,119 @@
 # esbuild-plugin-execute
 
-A tool to create esbuild plugins with a bunch of binaries 🙂.
+A small bridge between esbuild plugins and external executables 🙂.
 
-Why? Inspired from esbuild [doc](https://esbuild.github.io/plugins/#plugin-api-limitations) and this [issue 515](https://github.com/evanw/esbuild/issues/515). To help using executables in esbuild plugins and also enable writting (parts of) esbuild plugins in other languages (which could be faster).
+Use it to implement esbuild callbacks with tools written in Go, Rust, Python,
+or any language that can read command-line arguments and print JSON. Your build
+configuration stays in JavaScript, and the executable handles the work.
 
-## Prerequisite
+This is about **interoperability and reusing existing tools**, not guaranteed
+performance gains. Each matching callback starts a new process, so startup
+overhead can outweigh the benefit of a faster implementation.
 
-1. Knowledge of how to write esbuild plugin (note: this is a tool to create esbuild plugins)
-2. Executables used in the plugin are installed on the machine
+## Background
 
-## Usage
+Inspired by the [esbuild plugin documentation](https://esbuild.github.io/plugins/)
+and [esbuild issue #515](https://github.com/evanw/esbuild/issues/515), about using
+Go and JavaScript plugins together.
 
-This example recreates the plugin from https://esbuild.github.io/plugins/#resolve-callbacks
+## When to use it
 
-```javascript
-import esbuild from 'esbuild';
+- Reuse an existing executable to resolve imports or load custom file formats.
+- Keep non-JavaScript tooling alongside regular JavaScript esbuild plugins.
+- Run a tool at the start or end of each build, including rebuilds.
+
+If all your plugin logic is already JavaScript, a regular esbuild plugin is
+usually simpler. Executables used with this package must implement the protocol
+below; arbitrary CLI tools are not automatically compatible.
+
+## Installation
+
+Requires Node.js 22.12.0 or newer and esbuild `^0.28.2`.
+The package supports both ESM (`import`) and CommonJS (`require`), with
+TypeScript declarations for each. It has no runtime dependencies of its own.
+
+```sh
+pnpm add -D esbuild-plugin-execute esbuild@0.28.2
+```
+
+You provide and install the executables. The plugin does not compile or download
+them, and it runs in Node.js, not in the browser.
+
+## Quick start
+
+Here is a small text loader. It uses a Node.js executable to demonstrate the
+protocol without requiring another compiler; the same interface works with an
+executable written in another language.
+esbuild already has a built-in text loader; this example is only a minimal
+demonstration of the executable protocol.
+
+Create `tools/load-text.cjs`:
+
+```js
+const { readFileSync } = require('node:fs');
+
+// The first onLoad argument is the file path.
+const [path] = process.argv.slice(2);
+const contents = readFileSync(path, 'utf8');
+
+console.log(JSON.stringify({ contents, loader: 'text', watchFiles: [path] }));
+```
+
+Then add it to `build.mjs`:
+
+```js
+import * as esbuild from 'esbuild';
+import { fileURLToPath } from 'node:url';
 import { createPlugin, CallbackType } from 'esbuild-plugin-execute';
 
-let exampleOnResolvePlugin = createPlugin('example' [
+const textPlugin = createPlugin('load-text', [
   {
-    path: './resolveImage/main', // executable path
-    type: CallbackType.OnResolve,
-    filter: /^images\//,
+    path: process.execPath,
+    args: [fileURLToPath(new URL('./tools/load-text.cjs', import.meta.url))],
+    type: CallbackType.OnLoad,
+    filter: /\.txt$/,
+    timeout: 5000,
   },
-  {
-    path: './resolveHttp/main', // executable path
-    type: CallbackType.OnResolve,
-    filter: /^https?:\/\//,
-  },
-])
+]);
 
-esbuild.build({
+await esbuild.build({
   entryPoints: ['app.js'],
   bundle: true,
-  plugins: [exampleOnResolvePlugin],
-  loader: { '.png': 'binary' },
-}).catch(() => process.exit(1))
+  outfile: 'dist/app.js',
+  plugins: [textPlugin],
+});
 ```
 
-For example, the `./resolveHttp/main` executabe above could be like this if written in Go:
+Your application can now import text files:
 
-```Go
-package main
-
-import (
-  "encoding/json"
-  "fmt"
-  "os"
-)
-
-type Result struct {
-  Path      string `json:"path"`
-  External  bool `json:"external"`
-}
-
-func main() {
-  path := os.Args[1]
-  data, _ := json.Marshal(resolveHttp(path))
-  fmt.Println(string(data)) // print the json string to stdout
-}
-
-func resolveHttp(path string) *Result {
-  res := &Result{
-    Path:      path,
-    External:  true,
-  }
-  return res
-}
+```js
+import message from './message.txt';
+console.log(message);
 ```
 
-For more detailed examples, look at code in [test](./test) folder.
+For a native executable, use its path directly and omit `args` unless needed.
+For a Python script, for example, use the interpreter as `path` and the script
+path as the first fixed argument.
 
----
+CommonJS builds can use the same API:
 
-## Docs: createPlugin
+```js
+const { createPlugin, CallbackType } = require('esbuild-plugin-execute');
+```
 
-`createPlugin: (name: string, callbacks: Callback[]): Plugin`
+## API
 
-`createPlugin` takes in a plugin name and an array of callbacks:
+`createPlugin(name, callbacks)` returns an esbuild plugin.
 
-```typescript
+```ts
 interface Callback {
-  path: string; // path to the executable
-  type: CallbackType; // one of CallbackType
-  filter?: RegExp;  // https://esbuild.github.io/plugins/#filters
-  namespace?: string; // https://esbuild.github.io/plugins/#namespaces
+  path: string;
+  type: CallbackType;
+  filter?: RegExp;
+  namespace?: string;
+  args?: string[];
+  timeout?: number;
+  maxBuffer?: number;
 }
 
 enum CallbackType {
@@ -95,118 +124,106 @@ enum CallbackType {
 }
 ```
 
-## Docs: executables
+- **`path`**: executable path, or a command available on `PATH`.
+- **`filter`**: required for resolve and load callbacks. Keep filters narrow to
+  avoid launching unnecessary processes.
+- **`namespace`**: defaults to `file`. Use `''` to match all namespaces, including
+  imports from stdin and virtual modules.
+- **`args`**: fixed arguments placed before the callback arguments below.
+- **`timeout`**: positive milliseconds; omitted means no timeout.
+- **`maxBuffer`**: positive bytes, limiting stdout and stderr individually.
+  Defaults to Node.js's `execFile` limit.
 
-### 1. Arguments
+## Executable protocol
 
-Arguments are passed to your binary executable through command line.
+### Arguments
 
-For `CallbackType.OnResolve`, the following args are passed to your executable:
+Callback arguments are positional strings, following any fixed `args`:
 
-```typescript
-// https://esbuild.github.io/plugins/#resolve-arguments
-interface OnResolveArgs {
-  path: string;
-  importer: string;
-  namespace: string;
-  resolveDir: string;
-  kind: ResolveKind;
-  pluginData: any;
-}
+| Callback    | Arguments, in order                                                 |
+| ----------- | ------------------------------------------------------------------- |
+| `OnResolve` | `path`, `importer`, `namespace`, `resolveDir`, `kind`, `pluginData` |
+| `OnLoad`    | `path`, `namespace`, `suffix`, `pluginData`                         |
+| `OnStart`   | None                                                                |
+| `OnEnd`     | None                                                                |
 
-type ResolveKind =
-  | 'entry-point'
-  | 'import-statement'
-  | 'require-call'
-  | 'dynamic-import'
-  | 'require-resolve'
-  | 'import-rule'
-  | 'url-token'
+`pluginData` must be a string when provided. Missing or `null` data is passed as
+an empty string; other types fail the build.
+
+### Results
+
+Resolve, load, and start callbacks must print **one JSON object** to stdout,
+using the corresponding esbuild result shape:
+
+- [`OnResolveResult`](https://esbuild.github.io/plugins/#resolve-results)
+- [`OnLoadResult`](https://esbuild.github.io/plugins/#load-results)
+- [`OnStartResult`](https://esbuild.github.io/plugins/#on-start)
+
+Print `{}` or `null` to return no result. Keep diagnostic logs on stderr so they
+do not interfere with JSON parsing. esbuild validates hook-specific fields.
+
+End callbacks ignore stdout. They run after every build, including failed
+builds, but do not receive the build result. Start callbacks also run on every
+build. Both work with `esbuild.context()` and watch mode.
+
+Invalid configuration throws when creating the plugin. A non-zero exit code,
+missing executable, timeout, excessive output, or invalid JSON fails the build
+instead of being silently ignored.
+
+### Limitations and safety
+
+- Executables run directly, without a shell. Only use trusted executables;
+  this package is **not a sandbox**.
+- Each invocation is a separate process; there is no persistent worker or
+  shared in-process state.
+- The argument protocol exposes the fields listed above, not the entire
+  esbuild plugin API. It does not expose `setup`, `build.resolve`, or `onDispose`.
+- JSON results cannot carry arbitrary JavaScript values such as functions or
+  typed arrays. `pluginData` is string-only.
+
+See the [Svelte example](./test/svelte-plugin-example) for a loader that wraps an
+existing compiler.
+The [Go HTTP example](./test/http-plugin-example) demonstrates native executables
+for resolution and loading, including relative URL imports.
+
+## Development
+
+Use Node.js 22.12.0 or newer and pnpm 12.8.1, pinned in `package.json`.
+The integration suite also requires an installed Go toolchain (Go 1.18 or newer).
+Go tests compile standard-library-only sources; no modules or toolchains are downloaded.
+For an existing checkout with a lockfile:
+
+```sh
+pnpm install --frozen-lockfile --ignore-scripts
+pnpm audit --audit-level=high
+pnpm test
+pnpm types
+pnpm lint
+pnpm format:check
 ```
 
-For `CallbackType.OnLoad`:
+When changing dependencies, generate the lockfile and audit it before installing:
 
-```typescript
-// https://esbuild.github.io/plugins/#load-arguments
-interface OnLoadArgs {
-  path: string;
-  namespace: string;
-  suffix: string;
-  pluginData: any;
-}
+```sh
+pnpm install --lockfile-only --ignore-scripts
+pnpm audit --audit-level=high
+pnpm install --frozen-lockfile --ignore-scripts
 ```
 
-For `CallbackType.OnStart`, no argument is passed to the executable.
+Stop if the audit fails; do not suppress advisories or bypass release-age checks.
+Commit the reviewed `pnpm-lock.yaml` with dependency changes.
 
-For `CallbackType.OnEnd`, no argument is passed to the executable, because `BuildResult` is not easy to be passed to executable as arguments. In future, I may add a few items in `BuildResult`.
+Install-time scripts are disabled, including automatic Git hook setup. Enable
+hooks explicitly with `pnpm hooks:setup` if needed; do not enable all dependency
+scripts to work around an installation issue.
 
+`pnpm test` builds both module formats and their declarations, then runs the
+integration tests. Use `pnpm build` or `pnpm build:types` separately when needed,
+and `pnpm format` to format maintained files with Oxfmt. `pnpm format:check`
+checks formatting without writing files; `pnpm lint` runs Oxlint's correctness
+checks. Type checking remains a separate `pnpm types` command.
+Run `pnpm test:go` for just the Go integration tests. Format Go sources with `gofmt`.
 
-### 2. Returns
+## License
 
-Executables should print JSON string to stdout.
-
-For `CallbackType.OnResolve`:
-- https://esbuild.github.io/plugins/#resolve-results
-
-For `CallbackType.OnLoad`:
-- https://esbuild.github.io/plugins/#load-results
-
-For `CallbackType.OnStart`:
-- https://pkg.go.dev/github.com/evanw/esbuild/pkg/api#OnStartResult
-
-For `CallbackType.OnEnd`, no return value.
-
-
-**IMPT: `OnResolveArgs.pluginData`, `OnResolveResult.pluginData`, `OnLoadArgs.pluginData`, `OnLoadResult.pluginData` are can only be text/string data**
-
-
-
-
-
---- 
-
-## General design
-
-### 1. How to run go code
-
-Method 1: user provide the executable, goPlugin takes in a binary name and I just run it
-
-Method 2: user provide the go code, goPlugin takes in a go file path, I convert it to executable and run it
-
-I choose method 1, easier to use and fits more use cases
-
-### 2. Go file -> executable
-
-Method 1: I need to include an executable in my package (like what esbuild does), and use it to build the go code to produce an executable...
-
-Method 2: Ask user to install go on their machine first...
-
-I prefer method 1, easier for user to use.
-
-After some research, since user will have to compile go code, the best way may be ask user to install Go on their machines.
-
-### 3. User's code
-
-We pass args as cmd line args to executable provided by user.
-
-We get results from user's stdout.
-
-### 4. TypeScipt
-
-I should use typescript since esbuild API options and results have good types!
-
-### 5. Support esm and cjs
-
-Need to be able to be imported using both `require` or `import`
-
----
-
-
-
-
-
-## Limitations
-
-1. Not so easy to use overall...
-2. Require user to parse args and make executables
-3. Cannot write initialization code in `setup` function
+MIT
